@@ -1,12 +1,15 @@
-/* FileSaver.js demo script
- * 2011-07-14
- * 
- * By Eli Grey, http://eligrey.com
- * License: X11/MIT
- *   See LICENSE.md
+/*! FileSaver.js demo script
+ *  2012-01-23
+ *
+ *  By Eli Grey, http://eligrey.com
+ *  License: X11/MIT
+ *    See LICENSE.md
  */
 
 /*! @source http://purl.eligrey.com/github/FileSaver.js/blob/master/demo/demo.js */
+
+/*jshint laxbreak: true, laxcomma: true, smarttabs: true*/
+/*global saveAs, self*/
 
 (function(view) {
 "use strict";
@@ -18,21 +21,24 @@ var
 		return document.getElementById(id);
 	}
 	, session = view.sessionStorage
-	, BlobBuilder = view.BlobBuilder || view.WebKitBlobBuilder || view.MozBlobBuilder
-	
+	// only get URL when necessary in case Blob.js hasn't defined it yet
+	, get_blob = function() {
+		return view.Blob;
+	}
+
 	, canvas = $("canvas")
 	, canvas_options_form = $("canvas-options")
 	, canvas_filename = $("canvas-filename")
 	, canvas_clear_button = $("canvas-clear")
-	
+
 	, text = $("text")
 	, text_options_form = $("text-options")
 	, text_filename = $("text-filename")
-	
+
 	, html = $("html")
 	, html_options_form = $("html-options")
 	, html_filename = $("html-filename")
-	
+
 	, ctx = canvas.getContext("2d")
 	, drawing = false
 	, x_points = session.x_points || []
@@ -67,7 +73,7 @@ var
 	, stop_drawing = function() {
 		drawing = false;
 	}
-	
+
 	// Title guesser and document creator available at https://gist.github.com/1059648
 	, guess_title = function(doc) {
 		var
@@ -143,6 +149,7 @@ canvas_clear_button.addEventListener("click", function() {
 		0;
 }, false);
 canvas.addEventListener("mousedown", function(event) {
+	event.preventDefault();
 	drawing = true;
 	add_point(event.pageX - canvas.offsetLeft, event.pageY - canvas.offsetTop, false);
 	draw();
@@ -168,10 +175,12 @@ canvas_options_form.addEventListener("submit", function(event) {
 
 text_options_form.addEventListener("submit", function(event) {
 	event.preventDefault();
-	var bb = new BlobBuilder;
-	bb.append(text.value || text.placeholder);
+	var BB = get_blob();
 	saveAs(
-		  bb.getBlob("text/plain;charset=" + document.characterSet)
+		  new BB(
+			  [text.value || text.placeholder]
+			, {type: "text/plain;charset=" + document.characterSet}
+		)
 		, (text_filename.value || text_filename.placeholder) + ".txt"
 	);
 }, false);
@@ -179,13 +188,15 @@ text_options_form.addEventListener("submit", function(event) {
 html_options_form.addEventListener("submit", function(event) {
 	event.preventDefault();
 	var
-		  bb = new BlobBuilder
-		, xml_serializer = new XMLSerializer
+		  BB = get_blob()
+		, xml_serializer = new XMLSerializer()
 		, doc = create_html_doc(html)
 	;
-	bb.append(xml_serializer.serializeToString(doc));
 	saveAs(
-		  bb.getBlob("application/xhtml+xml;charset=" + document.characterSet)
+		  new BB(
+			  [xml_serializer.serializeToString(doc)]
+			, {type: "application/xhtml+xml;charset=" + document.characterSet}
+		)
 		, (html_filename.value || html_filename.placeholder) + ".xhtml"
 	);
 }, false);
@@ -195,10 +206,10 @@ view.addEventListener("unload", function() {
 	session.y_points = JSON.stringify(y_points);
 	session.drag_points = JSON.stringify(drag_points);
 	session.canvas_filename = canvas_filename.value;
-	
+
 	session.text = text.value;
 	session.text_filename = text_filename.value;
-	
+
 	session.html = html.innerHTML;
 	session.html_filename = html_filename.value;
 }, false);
